@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ResumeIQ – AI Resume Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1c1c27;
+      --border: #2a2a3a;
+      --accent: #c8f550;
+      --accent2: #7c6dff;
+      --text: #f0f0f5;
+      --muted: #7a7a99;
+      --danger: #ff5c5c;
+      --good: #50f5a0;
+      --warn: #f5c850;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Noise overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #root { position: relative; z-index: 1; }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 48px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--accent); }
+    .badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(200,245,80,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(200,245,80,0.3);
+      letter-spacing: 0.5px;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 72px 24px 48px;
+    }
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(36px, 6vw, 72px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -2px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: var(--accent);
+    }
+    .hero p {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 18px;
+      font-weight: 300;
+    }
+
+    /* Upload Area */
+    .upload-section {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    /* Dropzone */
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: var(--accent);
+      background: rgba(200,245,80,0.03);
+    }
+    .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .dropzone-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+    .dropzone h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .dropzone p { color: var(--muted); font-size: 14px; }
+    .file-selected {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(200,245,80,0.08);
+      border: 1px solid rgba(200,245,80,0.3);
+      border-radius: 10px;
+      padding: 14px 20px;
+      margin-top: 16px;
+    }
+    .file-selected span { color: var(--accent); font-weight: 500; font-size: 14px; }
+    .file-remove {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .file-remove:hover { color: var(--danger); }
+
+    /* Inputs */
+    .input-group { margin-bottom: 20px; }
+    .input-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    textarea, input[type="text"], input[type="password"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      padding: 14px 16px;
+      transition: border-color 0.2s;
+      resize: vertical;
+    }
+    textarea:focus, input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    textarea::placeholder, input::placeholder { color: var(--muted); }
+
+    /* Button */
+    .btn-analyze {
+      width: 100%;
+      padding: 18px;
+      background: var(--accent);
+      color: #0a0a0f;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-analyze:hover:not(:disabled) { background: #d9ff66; transform: translateY(-1px); }
+    .btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* Loading */
+    .loading-wrap {
+      text-align: center;
+      padding: 64px 24px;
+    }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-wrap h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+    .loading-wrap p { color: var(--muted); }
+
+    /* Results */
+    .results-section {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .results-header h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+    }
+    .btn-reset {
+      padding: 10px 24px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-reset:hover { border-color: var(--text); color: var(--text); }
+
+    /* Score Cards */
+    .scores-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) { .scores-grid { grid-template-columns: 1fr; } }
+
+    .score-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .score-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .score-card.overall::before { background: var(--accent); }
+    .score-card.ats::before { background: var(--accent2); }
+
+    .score-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .score-number {
+      font-family: 'Syne', sans-serif;
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .score-card.overall .score-number { color: var(--accent); }
+    .score-card.ats .score-number { color: var(--accent2); }
+
+    .score-bar-wrap {
+      margin-top: 16px;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .score-bar {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 1s ease;
+    }
+    .overall .score-bar { background: var(--accent); }
+    .ats .score-bar { background: var(--accent2); }
+
+    /* Suggestion banner */
+    .top-suggestion {
+      background: linear-gradient(135deg, rgba(200,245,80,0.08), rgba(124,109,255,0.05));
+      border: 1px solid rgba(200,245,80,0.2);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .tip-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+    .top-suggestion p { font-size: 15px; line-height: 1.6; }
+    .top-suggestion strong { color: var(--accent); }
+
+    /* Two col */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* Strength / weakness list */
+    .sw-list { display: flex; flex-direction: column; gap: 12px; }
+    .sw-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: var(--surface2);
+    }
+    .sw-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+    .sw-item h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .sw-item p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* Keywords */
+    .keywords-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+    .kw-tag {
+      font-size: 13px;
+      font-weight: 500;
+      padding: 5px 14px;
+      border-radius: 20px;
+    }
+    .kw-tag.matched {
+      background: rgba(80,245,160,0.1);
+      color: var(--good);
+      border: 1px solid rgba(80,245,160,0.3);
+    }
+    .kw-tag.missing {
+      background: rgba(255,92,92,0.1);
+      color: var(--danger);
+      border: 1px solid rgba(255,92,92,0.3);
+    }
+    .kw-section-title {
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 10px;
+      margin-top: 16px;
+    }
+    .kw-section-title:first-child { margin-top: 0; }
+
+    /* Rewrite tips */
+    .rewrite-list { display: flex; flex-direction: column; gap: 16px; }
+    .rewrite-item {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .rewrite-before, .rewrite-after {
+      padding: 14px 18px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .rewrite-before {
+      background: rgba(255,92,92,0.06);
+      border-bottom: 1px solid var(--border);
+    }
+    .rewrite-after { background: rgba(80,245,160,0.06); }
+    .rewrite-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .rewrite-before .rewrite-label { color: var(--danger); }
+    .rewrite-after .rewrite-label { color: var(--good); }
+
+    /* Section feedback */
+    .section-feedback-list { display: flex; flex-direction: column; gap: 10px; }
+    .sf-item {
+      display: flex;
+      gap: 14px;
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .sf-key {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent2);
+      min-width: 90px;
+      text-transform: capitalize;
+    }
+    .sf-val { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+    /* Sections found/missing */
+    .sections-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sec-tag {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.3px;
+    }
+    .sec-tag.found {
+      background: rgba(80,245,160,0.1);
+      color: var(--good);
+    }
+    .sec-tag.missing {
+      background: rgba(245,200,80,0.1);
+      color: var(--warn);
+    }
+
+    .error-box {
+      background: rgba(255,92,92,0.1);
+      border: 1px solid rgba(255,92,92,0.3);
+      border-radius: 12px;
+      padding: 20px 24px;
+      color: var(--danger);
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useCallback } = React;
+
+function ScoreCard({ label, score, className }) {
+  return (
+    <div className={`score-card ${className}`}>
+      <div className="score-label">{label}</div>
+      <div className="score-number">{score}<span style={{fontSize:'24px', fontWeight:400}}>/100</span></div>
+      <div className="score-bar-wrap">
+        <div className="score-bar" style={{ width: `${score}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function UploadView({ onResults }) {
+  const [file, setFile] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleFile = (f) => {
+    if (f && f.type === 'application/pdf') setFile(f);
+    else setError('Please upload a PDF file.');
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files[0];
+    handleFile(f);
+  };
+
+  const analyze = async () => {
+    if (!file) return;
+    setError('');
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('resume', file);
+
+      const res = await fetch('http://localhost:8000/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Server error');
+      // Backend returns { filename, status, analysis: {...} }
+      onResults(data.analysis, data.filename);
+    } catch (e) {
+      setError(e.message || 'Something went wrong. Is the backend running?');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="loading-wrap">
+      <div className="spinner" />
+      <h3>Analyzing your resume...</h3>
+      <p>Gemini is reading between the lines ✨</p>
+    </div>
+  );
+
+  return (
+    <div className="upload-section">
+      <div className="hero">
+        <h1>Your resume,<br/><em>brutally improved.</em></h1>
+        <p>AI-powered analysis · ATS scoring · Rewrite suggestions</p>
+      </div>
+
+      {error && <div className="error-box">⚠ {error}</div>}
+
+      <div className="card">
+        <div className="card-title">01 — Upload Resume (PDF)</div>
+        <div
+          className={`dropzone ${dragOver ? 'drag-over' : ''}`}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+        >
+          <input type="file" accept=".pdf" onChange={(e) => handleFile(e.target.files[0])} />
+          <div className="dropzone-icon">📄</div>
+          <h3>Drop your PDF here</h3>
+          <p>or click to browse files</p>
+        </div>
+        {file && (
+          <div className="file-selected">
+            <span>📎 {file.name}</span>
+            <button className="file-remove" onClick={() => setFile(null)}>✕</button>
+          </div>
+        )}
+      </div>
+
+      <button
+        className="btn-analyze"
+        onClick={analyze}
+        disabled={!file}
+      >
+        Analyze Resume →
+      </button>
+    </div>
+  );
+}
+
+function ResultsView({ data, filename, onReset }) {
+  const improvements = data.bullet_point_improvements || [];
+  return (
+    <div className="results-section">
+      <div className="results-header">
+        <div>
+          <h2>Analysis Complete</h2>
+          {filename && <p style={{color:'var(--muted)', fontSize:'13px', marginTop:'4px'}}>📎 {filename}</p>}
+        </div>
+        <button className="btn-reset" onClick={onReset}>← Analyze another</button>
+      </div>
+
+      {/* ATS Score — single big card */}
+      <div className="scores-grid" style={{gridTemplateColumns:'1fr', marginBottom:'20px'}}>
+        <ScoreCard label="Overall ATS Score" score={data.overall_ats_score} className="overall" />
+      </div>
+
+      {/* Brief Summary */}
+      {data.brief_summary && (
+        <div className="top-suggestion" style={{marginBottom:'20px'}}>
+          <div className="tip-icon">🧠</div>
+          <p>{data.brief_summary}</p>
+        </div>
+      )}
+
+      {/* Strengths & Missing Skills */}
+      <div className="two-col">
+        <div className="card">
+          <div className="card-title">Top Strengths</div>
+          <div className="sw-list">
+            {(data.top_strengths || []).map((s, i) => (
+              <div key={i} className="sw-item">
+                <div className="sw-icon">✅</div>
+                <div><p style={{fontSize:'14px', lineHeight:'1.5'}}>{s}</p></div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-title">Critical Missing Skills</div>
+          <div className="sw-list">
+            {(data.critical_missing_skills || []).map((s, i) => (
+              <div key={i} className="sw-item">
+                <div className="sw-icon">⚠️</div>
+                <div><p style={{fontSize:'14px', lineHeight:'1.5'}}>{s}</p></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Formatting Feedback */}
+      {data.resume_formatting_feedback && (
+        <div className="card" style={{marginBottom:'20px'}}>
+          <div className="card-title">Formatting Feedback</div>
+          <div style={{
+            background:'var(--surface2)', borderRadius:'10px', padding:'16px 20px',
+            fontSize:'14px', lineHeight:'1.7', color:'var(--muted)'
+          }}>
+            {data.resume_formatting_feedback}
+          </div>
+        </div>
+      )}
+
+      {/* Bullet Point Improvements */}
+      {improvements.length > 0 && (
+        <div className="card">
+          <div className="card-title">Bullet Point Improvements (XYZ Format)</div>
+          <div className="rewrite-list">
+            {improvements.map((r, i) => (
+              <div key={i} className="rewrite-item">
+                <div className="rewrite-before">
+                  <div className="rewrite-label">Before</div>
+                  {r.original_text}
+                </div>
+                <div className="rewrite-after">
+                  <div className="rewrite-label">After</div>
+                  {r.improved_text}
+                </div>
+                {r.reasoning && (
+                  <div style={{
+                    padding:'12px 18px',
+                    fontSize:'13px',
+                    color:'var(--muted)',
+                    background:'var(--surface2)',
+                    borderTop:'1px solid var(--border)',
+                    lineHeight:'1.6'
+                  }}>
+                    💬 {r.reasoning}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const [results, setResults] = useState(null);
+  const [filename, setFilename] = useState('');
+
+  const handleResults = (analysis, fname) => {
+    setResults(analysis);
+    setFilename(fname || '');
+  };
+
+  return (
+    <div>
+      <header className="header">
+        <div className="logo">Resume<span>IQ</span></div>
+        <div className="badge">Powered by Gemini</div>
+      </header>
+      {results
+        ? <ResultsView data={results} filename={filename} onReset={() => { setResults(null); setFilename(''); }} />
+        : <UploadView onResults={handleResults} />
+      }
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
