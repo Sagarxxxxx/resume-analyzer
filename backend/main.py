@@ -7,7 +7,7 @@ import json
 import os
 import io
 
-load_dotenv()  # Loads GEMINI_API_KEY from .env file
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 app = FastAPI(title="Resume Analyzer API")
 
